@@ -52,8 +52,8 @@ class Piece:
     _tile_data: list[list[tuple[int,int]]] = [
         [[(1,1),(1,2),(2,1),(2,2)]] * 4, # O
         [[(2,0),(2,1),(2,2),(2,3)], [(0,2),(1,2),(2,2),(3,2)]] * 2, #I
-        [[(1,0),(1,1),(1,2),(2,0)], [(0,0),(1,0),(1,1),(2,1)], [(0,2),(1,0),(1,1),(1,2)], [(0,1),(1,1),(2,1),(2,2)]], #L
-        [[(1,0),(1,1),(1,2),(2,2)], [(0,1),(1,1),(2,0),(2,1)], [(0,0),(1,0),(1,1),(1,2)], [(0,1),(0,2),(1,1),(2,1)]], #J
+        [[(1,0),(1,1),(1,2),(2,0)], [(0,0),(1,0),(1,1),(2,1)], [(0,2),(1,0),(1,1),(1,2)], [(0,1),(1,1),(2,1),(2,2)]], # L
+        [[(1,0),(1,1),(1,2),(2,2)], [(0,1),(1,1),(2,0),(2,1)], [(0,0),(1,0),(1,1),(1,2)], [(0,1),(0,2),(1,1),(2,1)]], # J
         [[(1,1),(1,2),(2,0),(2,1)], [(0,1),(1,1),(1,2),(2,2)]] * 2, #S
         [[(1,0),(1,1),(2,1),(2,2)], [(0,2),(1,1),(1,2),(2,1)]] * 2, #Z
         [[(1,0),(1,1),(1,2),(2,1)], [(0,1),(1,0),(1,1),(2,1)], [(0,1),(1,0),(1,1),(1,2)], [(0,1),(1,1),(1,2),(2,1)]] #T
@@ -98,25 +98,28 @@ class State:
         self.active_piece = active_piece
         self.next_piece = next_piece
 
-    # places piece
-    def place_piece(self, new_next_piece: Piece) -> None:
+    # places piece, returns number of cleared lines
+    def place_piece(self, new_next_piece: Piece) -> int:
         # place
         assert(self.placeable())
-        row_clears = False
+        row_clears = 0
         for r,c in self.active_piece.get_tiles():
             self.grid[r][c] = True
             self.row_count[r] += 1
-            row_clears = row_clears or self.row_count[r] == BOARD_DIM[1]
+            row_clears += int(self.row_count[r] == BOARD_DIM[1])
         self.active_piece, self.next_piece = self.next_piece, new_next_piece
 
-        # check for line clears
+        # handle line clears
+        if row_clears == 0:
+            return 0
         nr = BOARD_DIM[0]-1
         for r in range(BOARD_DIM[0]-1,-1,-1):
-            self.row_count[r] = self.row_count[nr]
-            self.grid[r] = self.grid[nr]
-            nr += 0 if self.row_count[r] == BOARD_DIM[1] else -1
+            self.row_count[nr] = self.row_count[r]
+            self.grid[nr] = self.grid[r]
+            nr += int(self.row_count[nr] == BOARD_DIM[1]) - 1
         for r in range(nr+1):
             self.grid[r] = [False] * BOARD_DIM[1]
+        return row_clears
 
     # validates that no collisions between board bounds or grid happens with active piece
     def valid(self) -> bool:
