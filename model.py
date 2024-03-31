@@ -29,6 +29,7 @@ def load_repr(repr: str | None = None) -> list[list[bool]]:
         for x in repr.split(';'):
             x = int(x)
             if curr: flat[offset:offset+x] = [True] * x
+            curr = not curr
             offset += x
     ret = [None] * BOARD_DIM[0]
     for r in range(0, BOARD_DIM[0]):
