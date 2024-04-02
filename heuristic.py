@@ -1,6 +1,7 @@
 from model import *
 from placement_search import Placement
 from typing import Callable
+from collections import deque
 import time
 import random
 
@@ -20,3 +21,22 @@ def score_heuristic(placement: Placement) -> float:
 
 def column_heights(state: State) -> list[int]:
     return [BOARD_DIM[0] - next(r for r in range(BOARD_DIM[0]+1) if r == BOARD_DIM[0] or state.grid[r][c]) for c in range(BOARD_DIM[1])]
+
+def hole_count(state: State) -> int:
+    q: deque[tuple[int,int]] = deque()
+    visited = [row[:] for row in state.grid]
+    for c in range(BOARD_DIM[1]):
+        if not visited[0][c]:
+            visited[0][c] = True
+            q.append((0,c))
+    while len(q) > 0:
+        (r, c) = q.popleft()
+        def check(r, c):
+            if visited[r][c]: return
+            visited[r][c] = True
+            q.append((r, c))
+        if r > 0: check(r-1, c)
+        if c > 0: check(r, c-1)
+        if r+1 < BOARD_DIM[0]: check(r+1, c)
+        if c+1 < BOARD_DIM[1]: check(r, c+1)
+    return sum(row.count(False) for row in visited)

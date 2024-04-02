@@ -52,6 +52,8 @@ def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice:
     state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
     while state.valid():
         render(state)
+        print(hole_count(state))
+        time.sleep(1)
         new_next_piece = Piece(PieceType(random.randint(0,6)))
         placements: list[Placement] = find_placements(state, new_next_piece, show_moves)
         chosen = chose_placement(placements, heuristic, weighted_choice)
