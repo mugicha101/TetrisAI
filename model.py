@@ -1,5 +1,3 @@
-import typing
-from typing import Generator
 from enum import IntEnum
 
 BOARD_DIM = [20,10]
