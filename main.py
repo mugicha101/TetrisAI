@@ -52,8 +52,8 @@ def random_placement():
     while state.valid():
         render(state)
         new_next_piece = Piece(PieceType(random.randint(0,6)))
-        next_states: list[Placement] = find_placements(state, new_next_piece)
-        chosen = next_states[random.randint(0,len(next_states)-1)]
+        placements: list[Placement] = find_placements(state, new_next_piece)
+        chosen = placements[random.randint(0,len(placements)-1)]
         move_playback(state, chosen.moves)
         state = chosen.new_state
     render(state)
