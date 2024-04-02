@@ -1,6 +1,7 @@
 from model import *
 from view import *
 from placement_search import *
+from heuristic import *
 import random
 import time
 
@@ -58,7 +59,18 @@ def random_placement():
         state = chosen.new_state
     render(state)
 
+def heuristic_placement():
+    state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
+    while state.valid():
+        render(state)
+        new_next_piece = Piece(PieceType(random.randint(0,6)))
+        placements: list[Placement] = find_placements(state, new_next_piece)
+        chosen = chose_placement(placements, score_heuristic, False)
+        move_playback(state, chosen.moves)
+        state = chosen.new_state
+    render(state)
+
 def main():
-    random_placement()
+    heuristic_placement()
 
 main()
