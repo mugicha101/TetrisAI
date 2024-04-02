@@ -48,30 +48,19 @@ def move_playback(state: State, moves: str) -> None:
             case _: raise Exception("invalid move")
         render(state)
 
-def random_placement():
-    state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
-    while state.valid():
-        render(state)
-        new_next_piece = Piece(PieceType(random.randint(0,6)))
-        placements: list[Placement] = find_placements(state, new_next_piece)
-        chosen = placements[random.randint(0,len(placements)-1)]
-        move_playback(state, chosen.moves)
-        state = chosen.new_state
-    render(state)
-
-def heuristic_placement(show_moves: bool) -> State:
+def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice: bool = True, show_moves: bool = True) -> State:
     state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
     while state.valid():
         render(state)
         new_next_piece = Piece(PieceType(random.randint(0,6)))
         placements: list[Placement] = find_placements(state, new_next_piece, show_moves)
-        chosen = chose_placement(placements, score_heuristic, False)
+        chosen = chose_placement(placements, heuristic, weighted_choice)
         if show_moves: move_playback(state, chosen.moves)
         state = chosen.new_state
     render(state)
     return state
 
 def main():
-    state = heuristic_placement(True)
+    end_state = heuristic_placement(score_heuristic, False, True)
 
 main()

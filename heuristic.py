@@ -11,10 +11,8 @@ def chose_placement(placements: list[Placement], heuristic: Callable[[Placement]
     weights = [heuristic(placement) for placement in placements]
     if not weighted:
         return placements[weights.index(max(weights))]
-    print(weights)
     mult = 1.0 / sum(weights)
     weights = [w * mult for w in weights]
-    time.sleep(1)
     return random.choices(placements, weights=weights, k=1)[0]
 
 def score_heuristic(placement: Placement) -> float:
