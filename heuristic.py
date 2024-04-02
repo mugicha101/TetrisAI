@@ -19,7 +19,7 @@ def chose_placement(placements: list[Placement], heuristic: Callable[[Placement]
     return random.choices(placements, weights=weights, k=1)[0]
 
 def score_heuristic(placement: Placement) -> float:
-    return -max(column_heights((placement.new_state))) * 5 - hole_count(placement.new_state) + placement.line_clears * 10
+    return -max(column_heights(placement.new_state)) * 5 - hole_count(placement.new_state) + placement.line_clears * 10
 
 def column_heights(state: State) -> list[int]:
     return [BOARD_DIM[0] - next(r for r in range(BOARD_DIM[0]+1) if r == BOARD_DIM[0] or state.grid[r][c]) for c in range(BOARD_DIM[1])]
@@ -63,6 +63,30 @@ def well_count(state: State):
     if height >= 4:
         return height
     return 0
+
+def least_squares(state: State, target_gradient) -> list[int]:
+    x_sum, y_sum, xy_sum, xsquare_sum = 0, 0, 0, 0
+
+    heights = column_heights(state)
+    for i in range(len(heights)):
+        x_sum += i
+        y_sum += heights[i]
+        xy_sum += i * heights[i]
+        xsquare_sum += i ** 2
+    
+    slope = (10 * xy_sum - (x_sum * y_sum)) / (10 * xsquare_sum - ((x_sum) ** 2))
+    intercept = (y_sum - (slope * x_sum)) / 10
+
+    ans = []
+    for i in range(len(heights)):
+         ans.append(abs(heights[i] - ((target_gradient * i) + intercept)))
+    
+    if(abs(.4 - slope) < 0.05):
+        target_gradient = 0
+    elif(abs(0 - slope) < 0.05):
+        target_gradient = 0.4
+
+    return sum(ans)
 
     
         
