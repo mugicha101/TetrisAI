@@ -55,6 +55,9 @@ def well_count(state: State):
                 row_total += 1
             else:
                 loc = col
+        if row_total == BOARD_DIM[1]:
+            #everything will either be covered or we have reached the bottom of any potential well
+            break
         if row_total != BOARD_DIM[1] - 1 or loc in blocked:
             #If there are not 9 filled columns or the unfilled column is blocked by something above it
             height = 0
