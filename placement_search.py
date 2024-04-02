@@ -8,18 +8,24 @@ sys.setrecursionlimit(10**6)
 
 # finds states after all possible placements
 # returns placement state, placed piece, and optionally transcript of moves (if store_moves active)
-def find_placement_states(state: State, new_next_piece: Piece, store_moves: bool = True) -> list[tuple[State,Piece,str]]:
+class Placement:
+    def __init__(self, new_state: State, placed_piece: Piece, moves: str):
+        self.new_state = new_state
+        self.placed_piece = placed_piece
+        self.moves = moves
+
+def find_placements(state: State, new_next_piece: Piece, store_moves: bool = True) -> list[Placement]:
     start_piece = state.active_piece.clone()
     state = state.clone()
     seen: dict[Piece,str] = {} # seen active piece state -> move performed
-    placement_states: list[Piece] = [] # placed piece
+    placeable_pieces: list[Piece] = [] # placed piece
     q: deque[Piece] = deque()
     q.append(state.active_piece.clone())
     while len(q) > 0:
         curr = q.popleft()
         state.active_piece = curr
         if state.placeable():
-            placement_states.append(curr.clone())
+            placeable_pieces.append(curr.clone())
         def check(move: str):
             if not state.valid() or curr in seen:
                 return
@@ -45,12 +51,12 @@ def find_placement_states(state: State, new_next_piece: Piece, store_moves: bool
         curr.translate(1, 0)
         check('D')
         curr.translate(-1, 0)
-    def f(piece: Piece) -> tuple[State,Piece,str]:
+    def f(piece: Piece) -> Placement:
         cloned_state = state.clone()
         cloned_state.active_piece = piece
         cloned_state.place_piece(new_next_piece)
         if not store_moves:
-            return (cloned_state, piece, "")
+            return Placement(cloned_state, piece, None)
         seq = ""
         curr = piece.clone()
         while curr != start_piece:
@@ -62,5 +68,5 @@ def find_placement_states(state: State, new_next_piece: Piece, store_moves: bool
                 case 'E': curr.rotate(True)
                 case 'Q': curr.rotate(False)
                 case _: raise Exception("invalid move")
-        return (cloned_state, piece, seq[::-1])
-    return list(map(f, placement_states))
+        return Placement(cloned_state, piece, seq[::-1])
+    return list(map(f, placeable_pieces))
