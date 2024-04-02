@@ -59,18 +59,18 @@ def random_placement():
         state = chosen.new_state
     render(state)
 
-def heuristic_placement():
+def heuristic_placement(show_moves: bool):
     state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
     while state.valid():
         render(state)
         new_next_piece = Piece(PieceType(random.randint(0,6)))
-        placements: list[Placement] = find_placements(state, new_next_piece)
+        placements: list[Placement] = find_placements(state, new_next_piece, show_moves)
         chosen = chose_placement(placements, score_heuristic, False)
-        move_playback(state, chosen.moves)
+        if show_moves: move_playback(state, chosen.moves)
         state = chosen.new_state
     render(state)
 
 def main():
-    heuristic_placement()
+    heuristic_placement(True)
 
 main()
