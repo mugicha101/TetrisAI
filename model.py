@@ -87,6 +87,12 @@ class Piece:
         if self._tiles is None:
             self._tiles = [(t[0] + self.offset[0], t[1] + self.offset[1]) for t in Piece._tile_data[int(self.type)][self.dir]]
         return self._tiles
+        
+    def __hash__(self) -> int:
+        return hash((self.type, self.dir, self.offset))
+    
+    def __eq__(self, other) -> bool:
+        return (self.type, self.dir, self.offset) == (other.type, other.dir, other.offset)
 
 # represents current game state
 class State:
