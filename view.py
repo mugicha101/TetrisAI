@@ -5,11 +5,15 @@ import time
 display = [['?'] * BOARD_DIM[1] for i in range(BOARD_DIM[0])]
 FRAME_TIME = 0.05
 
-def frame_pause():
+def frame_pause() -> None:
     if FRAME_TIME > 0:
         time.sleep(FRAME_TIME)
 
-def render(state: State):
+class render_controls:
+    enabled: bool = True # if disabled, render function does nothing
+
+def render(state: State) -> None:
+    if not render_controls.enabled: return
     os.system("cls")
     for r in range(BOARD_DIM[0]):
         for c in range(BOARD_DIM[1]):
