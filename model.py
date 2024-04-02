@@ -4,7 +4,7 @@ BOARD_DIM = [20,10]
 BOARD_SIZE = BOARD_DIM[0] * BOARD_DIM[1]
 
 # grid to str repr
-def grid_repr(grid: list[list[bool]] | None = None) -> str:
+def grid_repr(grid: list[list[bool]] or None = None) -> str:
     # 0001101111 -> 3,2,1,4
     # alternate between length of 0 seq and length of 1 seq
     arr = [False] * BOARD_SIZE if grid is None else [x for row in grid for x in row]
@@ -19,7 +19,7 @@ def grid_repr(grid: list[list[bool]] | None = None) -> str:
     return ';'.join([str(x) for x in ret])
 
 # str repr to grid
-def load_repr(repr: str | None = None) -> list[list[bool]]:
+def load_repr(repr: str or None = None) -> list[list[bool]]:
     flat = [0] * BOARD_SIZE
     curr = False
     if repr is not None:
@@ -66,7 +66,7 @@ class Piece:
         (-1,4)  # T
     ]
 
-    def __init__(self, type: PieceType, dir: int = 0, offset: tuple[int,int] | None = None):
+    def __init__(self, type: PieceType, dir: int = 0, offset: tuple[int,int] or None = None):
         self.type = type
         self.dir = dir
         self.offset = Piece._starting_offset[int(type)] if offset is None else offset
@@ -96,7 +96,7 @@ class Piece:
 
 # represents current game state
 class State:
-    def __init__(self, grid: list[list[bool]] | None = None, active_piece: Piece = Piece(PieceType.O), next_piece: Piece = Piece(PieceType.O)):
+    def __init__(self, grid: list[list[bool]] or None = None, active_piece: Piece = Piece(PieceType.O), next_piece: Piece = Piece(PieceType.O)):
         self.grid = load_repr() if grid is None else [row[:] for row in grid]
         self.row_count = [self.grid[r].count(True) for r in range(BOARD_DIM[0])]
         self.active_piece = active_piece
