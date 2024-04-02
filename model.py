@@ -4,7 +4,7 @@ BOARD_DIM = [20,10]
 BOARD_SIZE = BOARD_DIM[0] * BOARD_DIM[1]
 
 # grid to str repr
-def grid_repr(grid: list[list[bool]] or None = None) -> str:
+def grid_repr(grid: list[list[bool]] = None) -> str:
     # 0001101111 -> 3,2,1,4
     # alternate between length of 0 seq and length of 1 seq
     arr = [False] * BOARD_SIZE if grid is None else [x for row in grid for x in row]
@@ -19,7 +19,7 @@ def grid_repr(grid: list[list[bool]] or None = None) -> str:
     return ';'.join([str(x) for x in ret])
 
 # str repr to grid
-def load_repr(repr: str or None = None) -> list[list[bool]]:
+def load_repr(repr: str = None) -> list[list[bool]]: # type ignore
     flat = [0] * BOARD_SIZE
     curr = False
     if repr is not None:
@@ -48,12 +48,12 @@ class PieceType(IntEnum):
 # represents a tetromino
 class Piece:
     _tile_data: list[list[tuple[int,int]]] = [
-        [[(1,1),(1,2),(2,1),(2,2)]] * 4, # O
-        [[(2,0),(2,1),(2,2),(2,3)], [(0,2),(1,2),(2,2),(3,2)]] * 2, #I
+        [[(1,1),(1,2),(2,1),(2,2)]], # O
+        [[(2,0),(2,1),(2,2),(2,3)], [(0,2),(1,2),(2,2),(3,2)]], #I
         [[(1,0),(1,1),(1,2),(2,0)], [(0,0),(0,1),(1,1),(2,1)], [(0,2),(1,0),(1,1),(1,2)], [(0,1),(1,1),(2,1),(2,2)]], # L
         [[(1,0),(1,1),(1,2),(2,2)], [(0,1),(1,1),(2,0),(2,1)], [(0,0),(1,0),(1,1),(1,2)], [(0,1),(0,2),(1,1),(2,1)]], # J
-        [[(1,1),(1,2),(2,0),(2,1)], [(0,1),(1,1),(1,2),(2,2)]] * 2, #S
-        [[(1,0),(1,1),(2,1),(2,2)], [(0,2),(1,1),(1,2),(2,1)]] * 2, #Z
+        [[(1,1),(1,2),(2,0),(2,1)], [(0,1),(1,1),(1,2),(2,2)]], #S
+        [[(1,0),(1,1),(2,1),(2,2)], [(0,2),(1,1),(1,2),(2,1)]], #Z
         [[(1,0),(1,1),(1,2),(2,1)], [(0,1),(1,0),(1,1),(2,1)], [(0,1),(1,0),(1,1),(1,2)], [(0,1),(1,1),(1,2),(2,1)]] #T
     ]
     _starting_offset: list[tuple[int,int]] = [
@@ -66,7 +66,7 @@ class Piece:
         (-1,4)  # T
     ]
 
-    def __init__(self, type: PieceType, dir: int = 0, offset: tuple[int,int] or None = None):
+    def __init__(self, type: PieceType, dir: int = 0, offset: tuple[int,int] = None):
         self.type = type
         self.dir = dir
         self.offset = Piece._starting_offset[int(type)] if offset is None else offset
@@ -78,7 +78,7 @@ class Piece:
 
     def rotate(self, ccw: bool) -> None:
         self._tiles = None
-        self.dir = (self.dir + 4 + (-1 if ccw else 1)) & 3
+        self.dir = (self.dir + len(Piece._tile_data[int(self.type)]) + (-1 if ccw else 1)) % len(Piece._tile_data[int(self.type)])
         
     def clone(self) -> 'Piece':
         return Piece(self.type, self.dir, self.offset[:])
@@ -96,7 +96,7 @@ class Piece:
 
 # represents current game state
 class State:
-    def __init__(self, grid: list[list[bool]] or None = None, active_piece: Piece = Piece(PieceType.O), next_piece: Piece = Piece(PieceType.O)):
+    def __init__(self, grid: list[list[bool]] = None, active_piece: Piece = Piece(PieceType.O), next_piece: Piece = Piece(PieceType.O)):
         self.grid = load_repr() if grid is None else [row[:] for row in grid]
         self.row_count = [self.grid[r].count(True) for r in range(BOARD_DIM[0])]
         self.active_piece = active_piece
@@ -132,3 +132,6 @@ class State:
     # checks if is placeable
     def placeable(self) -> bool:
         return self.valid() and any(t[0] == BOARD_DIM[0]-1 or self.grid[t[0]+1][t[1]] for t in self.active_piece.get_tiles())
+    
+    def clone(self) -> 'State':
+        return State(self.grid, self.active_piece, self.next_piece)
