@@ -45,9 +45,7 @@ def hole_count(state: State) -> int:
 
 def well_count(state: State):
     blocked = set()
-    prior = -1
     loc = 0
-    ans = 0
     height = 0
     for row in range(BOARD_DIM[0]):
         row_total = 0
@@ -57,11 +55,10 @@ def well_count(state: State):
                 row_total += 1
             else:
                 loc = col
-        if row_total != BOARD_DIM[1] - 1 or (loc != prior and prior != -1) or loc in blocked:
+        if row_total != BOARD_DIM[1] - 1 or loc in blocked:
+            #If there are not 9 filled columns or the unfilled column is blocked by something above it
             height = 0
-            prior = -1
         else:
-            prior = loc
             height += 1
     if height >= 4:
         return height
