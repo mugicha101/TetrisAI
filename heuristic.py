@@ -40,3 +40,31 @@ def hole_count(state: State) -> int:
         if r+1 < BOARD_DIM[0]: check(r+1, c)
         if c+1 < BOARD_DIM[1]: check(r, c+1)
     return sum(row.count(False) for row in visited)
+
+def well_count(state: State):
+    blocked = set()
+    prior = -1
+    loc = 0
+    ans = 0
+    height = 0
+    for row in range(BOARD_DIM[0]):
+        row_total = 0
+        for col, val in enumerate(state.grid[row]):
+            if val:
+                blocked.add(col)
+                row_total += 1
+            else:
+                loc = col
+        if row_total != BOARD_DIM[1] - 1 or (loc != prior and prior != -1) or loc in blocked:
+            height = 0
+            prior = -1
+        else:
+            prior = loc
+            height += 1
+    if height >= 4:
+        return height
+    return 0
+
+    
+        
+
