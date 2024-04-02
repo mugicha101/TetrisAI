@@ -12,12 +12,14 @@ def chose_placement(placements: list[Placement], heuristic: Callable[[Placement]
     weights = [heuristic(placement) for placement in placements]
     if not weighted:
         return placements[weights.index(max(weights))]
+    offset = min(weights)
+    weights = [w - offset for w in weights]
     mult = 1.0 / sum(weights)
     weights = [w * mult for w in weights]
     return random.choices(placements, weights=weights, k=1)[0]
 
 def score_heuristic(placement: Placement) -> float:
-    return (BOARD_DIM[0] - max(column_heights((placement.new_state)))) ** 2
+    return -max(column_heights((placement.new_state))) * 5 - hole_count(placement.new_state) + placement.line_clears * 10
 
 def column_heights(state: State) -> list[int]:
     return [BOARD_DIM[0] - next(r for r in range(BOARD_DIM[0]+1) if r == BOARD_DIM[0] or state.grid[r][c]) for c in range(BOARD_DIM[1])]
