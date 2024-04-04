@@ -6,7 +6,7 @@ display = [['?'] * BOARD_DIM[1] for i in range(BOARD_DIM[0])]
 
 class render_controls:
     enabled: bool = True # if disabled, render function does nothing
-    frame_time: bool = 0.02 # time in seconds between render frames
+    frame_time: bool = 0.05 # time in seconds between render frames
 
 def frame_pause() -> None:
     if render_controls.frame_time > 0:
