@@ -43,7 +43,7 @@ def hole_count(state: State) -> int:
         if c+1 < BOARD_DIM[1]: check(r, c+1)
     return sum(row.count(False) for row in visited)
 
-def well_count(state: State):
+def well_count(state: State) -> int:
     blocked = set()
     loc = 0
     height = 0
@@ -63,9 +63,12 @@ def well_count(state: State):
             height = 0
         else:
             height += 1
-    if height >= 4:
+    if height >= 1:
         return height
-    return 0
+    return -100
+
+def well_heuristic(state: State) -> int:
+    return well_count(state)
 
     
         
