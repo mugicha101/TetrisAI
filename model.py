@@ -96,14 +96,16 @@ class Piece:
 
 # represents current game state
 class State:
+    _line_clear_score: list[int] = [0, 40, 100, 300, 1200]
+
     def __init__(self, grid: list[list[bool]] = None, active_piece: Piece = Piece(PieceType.O), next_piece: Piece = Piece(PieceType.O)):
         self.grid = load_repr() if grid is None else [row[:] for row in grid]
         self.row_count = [self.grid[r].count(True) for r in range(BOARD_DIM[0])]
         self.active_piece = active_piece
         self.next_piece = next_piece
 
-    # places piece, returns number of cleared lines
-    def place_piece(self, new_next_piece: Piece) -> int:
+    # places piece, returns number of cleared lines and score gain
+    def place_piece(self, new_next_piece: Piece) -> tuple[int,int]:
         # place
         assert(self.placeable())
         row_clears = 0
@@ -123,7 +125,10 @@ class State:
             nr += int(self.row_count[nr] == BOARD_DIM[1]) - 1
         for r in range(nr+1):
             self.grid[r] = [False] * BOARD_DIM[1]
-        return row_clears
+
+        # handle score
+        score = State._line_clear_score[row_clears]
+        return (row_clears, score)
 
     # validates that no collisions between board bounds or grid happens with active piece
     def valid(self) -> bool:
