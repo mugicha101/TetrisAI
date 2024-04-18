@@ -1,4 +1,5 @@
 from model import *
+from view import *
 from placement_search import Placement
 from placement_search import find_placements
 from heuristic import *
@@ -7,9 +8,9 @@ from time import sleep
 import random
 import os
 
-GROUP_SIZE = 10 # size of remaining group per epoch
+GROUP_SIZE = 15 # size of remaining group per epoch
 CHILD_COUNT = 5 # number of children produced by each pair of models in group per epoch
-RAND_PARENTS = 3 # number of completely random parents to add at start of each epoch
+RAND_PARENTS = 2 # number of completely random parents to add at start of each epoch
 MUT_STD = 1 # standard deviation to mutate each param by when crossbreeding = MUT_STD * (diff between this param in parent)
 NUM_CORES = 8 # number of cores to use
 
@@ -79,7 +80,7 @@ def gen_score_heuristic(model_params: dict[str,float]) -> Callable[[Placement],f
     return heuristic
 
 # simulate full game with model
-def simulate(src):
+def simulate(src, playback=False):
     model_params, rand_seed, epoch_num, cid = src
     heuristic = gen_score_heuristic(model_params)
     local_rand = random.Random()
@@ -94,7 +95,10 @@ def simulate(src):
         chosen = chose_placement(placements, heuristic, False)
         score += chosen.score_gain
         state = chosen.new_state
+        if playback:
+            render(chosen.new_state)
         moves += 1
+    if playback: return
     print(f"epoch: {epoch_num+1} child: {cid+1}, score: {score}, moves: {moves}")
     return (score, moves)
 
@@ -109,7 +113,7 @@ def train(source_path: str, epochs: int):
     sim_pool = Pool(NUM_CORES)
     for epoch_num in range(epochs):
         # add random parents
-        num_rand_parents = GROUP_SIZE + RAND_PARENTS - len(group)
+        num_rand_parents = max(GROUP_SIZE + RAND_PARENTS - len(group), 0)
         for _ in range(num_rand_parents):
             group.append(rand_model())
         print(f"added {num_rand_parents} random parents")
@@ -129,8 +133,10 @@ def train(source_path: str, epochs: int):
 
         # simulate games
         seed = random.randint(0, 10000000000)
+        def gen_src(index: int, model_params: dict[str,float]):
+            return (model_params, seed, epoch_num, index)
         try:
-            async_res = sim_pool.map_async(simulate, [(c, seed, epoch_num, i) for i, c in enumerate(children)])
+            async_res = sim_pool.map_async(simulate, [gen_src(i, c) for i, c in enumerate(children)])
             while not async_res.ready(): sleep(1)
             children = list(zip(children, async_res.get()))
         except KeyboardInterrupt:
@@ -148,6 +154,9 @@ def train(source_path: str, epochs: int):
 
         # store results
         store_group(source_path, group)
+
+        # playback best
+        simulate(gen_src(0, group[0]), True)
     
     # cleanup
     sim_pool.close()
@@ -156,4 +165,6 @@ def main():
     train("training_cache.txt", 1000)
 
 if __name__ == "__main__":
+    render_controls.enabled = True
+    render_controls.frame_time = 0.01
     main()

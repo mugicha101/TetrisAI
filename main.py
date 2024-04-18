@@ -2,6 +2,7 @@ from model import *
 from view import *
 from placement_search import *
 from heuristic import *
+from training import *
 import random
 import time
 
@@ -37,17 +38,6 @@ def manual_play():
             state.place_piece(Piece(PieceType(random.randint(0,6))))
     render(state)
 
-def move_playback(state: State, moves: str) -> None:
-    for m in moves:
-        match m:
-            case 'L': state.active_piece.translate(0, -1)
-            case 'R': state.active_piece.translate(0, 1)
-            case 'D': state.active_piece.translate(1, 0)
-            case 'E': state.active_piece.rotate(False)
-            case 'Q': state.active_piece.rotate(True)
-            case _: raise Exception("invalid move")
-        render(state)
-
 def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice: bool = True, show_moves: bool = True) -> State:
     state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
     while state.valid():
@@ -61,7 +51,10 @@ def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice:
     return state
 
 def main():
-    end_state = heuristic_placement(test_heuristic, False, True)
+    # load best model
+    heuristic = gen_score_heuristic(load_group("training_cache.txt")[0])
+    render_controls.frame_time = 0.01
+    end_state = heuristic_placement(heuristic, False, True)
 
 if __name__ == "__main__":
     main()
