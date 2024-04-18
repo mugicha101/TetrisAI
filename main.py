@@ -61,6 +61,7 @@ def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice:
     return state
 
 def main():
-    end_state = heuristic_placement(score_heuristic, False, True)
+    end_state = heuristic_placement(test_heuristic, False, True)
 
-main()
+if __name__ == "__main__":
+    main()

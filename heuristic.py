@@ -2,7 +2,6 @@ from model import *
 from placement_search import Placement
 from typing import Callable
 from collections import deque
-import time
 import random
 
 # MCTS next placement agent
@@ -18,14 +17,27 @@ def chose_placement(placements: list[Placement], heuristic: Callable[[Placement]
     weights = [w * mult for w in weights]
     return random.choices(placements, weights=weights, k=1)[0]
 
-def score_heuristic(placement: Placement) -> float:
+def test_heuristic(placement: Placement) -> float:
     col_heights = column_heights(placement.new_state)
     return -(hole_count(placement.new_state) ** 2) - least_squares(placement.new_state, 0) - (max(col_heights) - 4) ** 2 - min(col_heights) ** 2 + (placement.line_clears * 3) ** 2
 
 def column_heights(state: State) -> list[int]:
     return [BOARD_DIM[0] - next(r for r in range(BOARD_DIM[0]+1) if r == BOARD_DIM[0] or state.grid[r][c]) for c in range(BOARD_DIM[1])]
 
+# counts number of empty tiles under a solid tile
 def hole_count(state: State) -> int:
+    overhangs = 0
+    for c in range(BOARD_DIM[1]):
+        r = 0
+        while r < BOARD_DIM[0] and not state.grid[r][c]:
+            r += 1
+        while r < BOARD_DIM[0]:
+            overhangs += 1 if not state.grid[r][c] else 0
+            r += 1
+    return overhangs
+
+# counts number of "holes" or empty tiles inaccessible directly
+def old_hole_count(state: State) -> int:
     q: deque[tuple[int,int]] = deque()
     visited = [row[:] for row in state.grid]
     for c in range(BOARD_DIM[1]):
@@ -38,11 +50,12 @@ def hole_count(state: State) -> int:
             if visited[r][c]: return
             visited[r][c] = True
             q.append((r, c))
-        # if c > 0: check(r, c-1)
-        # if c+1 < BOARD_DIM[1]: check(r, c+1)
+        if c > 0: check(r, c-1)
+        if c+1 < BOARD_DIM[1]: check(r, c+1)
         if r+1 < BOARD_DIM[0]: check(r+1, c)
     return sum(row.count(False) for row in visited)
 
+# calculates height of best candidate well
 def well_count(state: State):
     blocked = set()
     loc = 0
@@ -67,6 +80,7 @@ def well_count(state: State):
         return height
     return 0
 
+# calculate least squares error from target slope
 def least_squares(state: State, target_gradient) -> list[int]:
     x_sum, y_sum, xy_sum, xsquare_sum = 0, 0, 0, 0
 

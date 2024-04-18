@@ -117,7 +117,7 @@ class State:
 
         # handle line clears
         if row_clears == 0:
-            return 0
+            return (0, 0)
         nr = BOARD_DIM[0]-1
         for r in range(BOARD_DIM[0]-1,-1,-1):
             self.row_count[nr] = self.row_count[r]
