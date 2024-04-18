@@ -2,16 +2,18 @@ from model import *
 from placement_search import Placement
 from placement_search import find_placements
 from heuristic import *
-from threading import Thread
+from multiprocessing import Process, Pool
 from time import sleep
-import signal
 import random
 import os
 
 GROUP_SIZE = 10 # size of remaining group per epoch
-CHILD_COUNT = 3 # number of children produced by each pair of models in group per epoch
-MUT_STD = 0.5 # standard deviation to mutate each param by when crossbreeding = MUT_STD * (diff between this param in parent)
-NUM_THREADS = 8 # number of threads to use
+CHILD_COUNT = 5 # number of children produced by each pair of models in group per epoch
+RAND_PARENTS = 3 # number of completely random parents to add at start of each epoch
+MUT_STD = 1 # standard deviation to mutate each param by when crossbreeding = MUT_STD * (diff between this param in parent)
+NUM_CORES = 8 # number of cores to use
+
+# TODO: GET PROCESS RETURN VALUE
 
 def load_group(gene_file_path: str) -> list[dict[str,float]]:
     group: list[dict[str,float]] = []
@@ -77,36 +79,41 @@ def gen_score_heuristic(model_params: dict[str,float]) -> Callable[[Placement],f
     return heuristic
 
 # simulate full game with model
-def simulate(src_list: list[list], rand_seed: int, epoch_num: int, tid: int):
-    for sid, src in enumerate(src_list):
-        model_params = src[0]
-        heuristic = gen_score_heuristic(model_params)
-        local_rand = random.Random()
-        local_rand.seed(rand_seed)
-        def gen_piece() -> Piece:
-            return Piece(PieceType(local_rand.randint(0,6)))
-        state = State(active_piece = gen_piece(), next_piece = gen_piece())
-        score = 0
-        while state.valid():
-            placements: list[Placement] = find_placements(state, gen_piece(), False)
-            chosen = chose_placement(placements, heuristic, False)
-            score += chosen.score_gain
-            state = chosen.new_state
-        src.append(score)
-        print(f"epoch {epoch_num+1} thread {tid+1} child {sid} score {score}")
+def simulate(src):
+    model_params, rand_seed, epoch_num, cid = src
+    heuristic = gen_score_heuristic(model_params)
+    local_rand = random.Random()
+    local_rand.seed(rand_seed)
+    def gen_piece() -> Piece:
+        return Piece(PieceType(local_rand.randint(0,6)))
+    state = State(active_piece = gen_piece(), next_piece = gen_piece())
+    score = 0
+    moves = 0
+    while state.valid():
+        placements: list[Placement] = find_placements(state, gen_piece(), False)
+        chosen = chose_placement(placements, heuristic, False)
+        score += chosen.score_gain
+        state = chosen.new_state
+        moves += 1
+    print(f"epoch: {epoch_num+1} child: {cid+1}, score: {score}, moves: {moves}")
+    return (score, moves)
 
 # evolutionary training
 def train(source_path: str, epochs: int):
     # check if existing weight values exist and load if possible
-    group: list[dict[str,float]] = {}
+    group: list[dict[str,float]] = []
     if os.path.isfile(source_path):
         group = load_group(source_path)
-    else:
-        # generate random group
-        group = [rand_model() for _ in range(GROUP_SIZE)]
     
     # simulate evolution
+    sim_pool = Pool(NUM_CORES)
     for epoch_num in range(epochs):
+        # add random parents
+        num_rand_parents = GROUP_SIZE + RAND_PARENTS - len(group)
+        for _ in range(num_rand_parents):
+            group.append(rand_model())
+        print(f"added {num_rand_parents} random parents")
+
         # generate children
         def gen_child(p1: dict[str,float], p2: dict[str,float]):
             c = p1.copy()
@@ -114,41 +121,36 @@ def train(source_path: str, epochs: int):
                 c[param_name] = rand.normalvariate(p1[param_name] * 0.5 + p2[param_name] * 0.5, MUT_STD * (abs(p1[param_name] - p2[param_name])))
             return c
         children = []
-        thread_srcs = [[] for _ in range(NUM_THREADS)]
         for i in range(len(group)):
             for j in range(i+1,len(group)):
                 for k in range(CHILD_COUNT):
-                    children.append([gen_child(group[i], group[j])])
-                    thread_srcs[(len(children)-1) % NUM_THREADS].append(children[-1])
+                    children.append(gen_child(group[i], group[j]))
         print(f"{len(children)} children created")
 
         # simulate games
         seed = random.randint(0, 10000000000)
-        threads = []
         try:
-            for i in range(NUM_THREADS):
-                src = thread_srcs[i]
-                thread = Thread(target=simulate, args=(src, seed, epoch_num, i))
-                thread.daemon = True
-                threads.append(thread)
-                thread.start()
-            for i in range(NUM_THREADS):
-                while threads[i].is_alive(): sleep(1)
-                threads[i].join()
+            async_res = sim_pool.map_async(simulate, [(c, seed, epoch_num, i) for i, c in enumerate(children)])
+            while not async_res.ready(): sleep(1)
+            children = list(zip(children, async_res.get()))
         except KeyboardInterrupt:
             print("KILL")
-            for i in range(NUM_THREADS):
-                threads[i].join(timeout=0)
+            sim_pool.terminate()
+            exit(-1)
         print(f"epoch {epoch_num+1} simulation finished")
         
         # keep best children
-        children.sort(key=lambda x : -x[1])
-        print(f"best score: {children[0][1]}")
+        children.sort(key=lambda x : -x[1][1]) # sort by moves
+        print(f"best score: {children[0][1][0]}, average score: {sum(c[1][0] for c in children) / len(children)}")
+        print(f"best moves: {children[0][1][1]}, average moves: {sum(c[1][1] for c in children) / len(children)}")
 
         group = [x[0] for x in children[0:min(len(children), GROUP_SIZE)]]
 
         # store results
         store_group(source_path, group)
+    
+    # cleanup
+    sim_pool.close()
 
 def main():
     train("training_cache.txt", 1000)
