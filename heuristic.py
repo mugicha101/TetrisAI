@@ -76,9 +76,12 @@ def well_count(state: State):
             height = 0
         else:
             height += 1
-    if height >= 4:
+    if height >= 1:
         return height
-    return 0
+    return -100
+
+def well_heuristic(state: State) -> int:
+    return well_count(state)
 
 # calculate least squares error from target slope
 def least_squares(state: State, target_gradient) -> list[int]:
