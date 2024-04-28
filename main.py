@@ -40,14 +40,18 @@ def manual_play():
 
 def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice: bool = True, show_moves: bool = True) -> State:
     state = State(active_piece = Piece(PieceType(random.randint(0,6))), next_piece = Piece(PieceType(random.randint(0,6))))
+    score = 0
+    line_clears = 0
     while state.valid():
-        render(state)
+        render(state, score, line_clears)
         new_next_piece = Piece(PieceType(random.randint(0,6)))
         placements: list[Placement] = find_placements(state, new_next_piece, show_moves)
         chosen = chose_placement(placements, heuristic, weighted_choice)
-        if show_moves: move_playback(state, chosen.moves)
+        if show_moves: move_playback(state, chosen.moves, score, line_clears)
+        score += chosen.score_gain
+        line_clears += chosen.line_clears
         state = chosen.new_state
-    render(state)
+    render(state, score, line_clears)
     return state
 
 def main():

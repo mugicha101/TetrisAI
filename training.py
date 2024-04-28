@@ -8,8 +8,8 @@ from time import sleep
 import random
 import os
 
-GROUP_SIZE = 15 # size of remaining group per epoch
-CHILD_COUNT = 5 # number of children produced by each pair of models in group per epoch
+GROUP_SIZE = 100 # size of remaining group per epoch
+TRAINING_GROUP_SIZE = 150 # size of training group per epoch (crossbreed until this size reached)
 RAND_PARENTS = 2 # number of completely random parents to add at start of each epoch
 MUT_STD = 1 # standard deviation to mutate each param by when crossbreeding = MUT_STD * (diff between this param in parent)
 NUM_CORES = 8 # number of cores to use
@@ -44,7 +44,9 @@ P_SCORE_CHANGE_A2 = "score_change_a2"
 P_BUMPINESS_A1 = "bumpiness_a1"
 P_BUMPINESS_A2 = "bumpiness_a2"
 P_TARGET_SLOPE = "target_slope"
-P_LIST = [P_LINE_CLEAR_A1, P_LINE_CLEAR_A2, P_COL_SUM_A1, P_COL_SUM_A2, P_MAX_COL_A1, P_MAX_COL_A2, P_SCORE_CHANGE_A1, P_SCORE_CHANGE_A2, P_BUMPINESS_A1, P_BUMPINESS_A2, P_TARGET_SLOPE]
+P_WELL_HEIGHT_A1 = "well_height_a1"
+P_WELL_HEIGHT_A2 = "well_height_a2"
+P_LIST = [P_LINE_CLEAR_A1, P_LINE_CLEAR_A2, P_COL_SUM_A1, P_COL_SUM_A2, P_MAX_COL_A1, P_MAX_COL_A2, P_SCORE_CHANGE_A1, P_SCORE_CHANGE_A2, P_BUMPINESS_A1, P_BUMPINESS_A2, P_TARGET_SLOPE, P_WELL_HEIGHT_A1, P_WELL_HEIGHT_A2]
 
 rand = random.Random()
 
@@ -60,6 +62,8 @@ def rand_model() -> dict[str,float]:
     model_params[P_SCORE_CHANGE_A2] = rand.uniform(0, 10)
     model_params[P_BUMPINESS_A1] = rand.uniform(-10, 0)
     model_params[P_BUMPINESS_A2] = rand.uniform(-10, 0)
+    model_params[P_WELL_HEIGHT_A1] = rand.uniform(0, 10)
+    model_params[P_WELL_HEIGHT_A2] = rand.uniform(0, 10)
     model_params[P_TARGET_SLOPE] = rand.uniform(-0.5, 0.5)
     return model_params
 
@@ -70,13 +74,15 @@ def gen_score_heuristic(model_params: dict[str,float]) -> Callable[[Placement],f
         col_sum = sum(cols)
         max_col = max(cols)
         bumpiness = least_squares(s, model_params[P_TARGET_SLOPE])
+        well = well_count(s)
 
         return \
             placement.line_clears * model_params[P_LINE_CLEAR_A1] + placement.line_clears ** 2 * model_params[P_LINE_CLEAR_A2] + \
             col_sum * model_params[P_COL_SUM_A1] + col_sum ** 2 * model_params[P_COL_SUM_A2] + \
             max_col * model_params[P_MAX_COL_A1] + max_col ** 2 * model_params[P_MAX_COL_A2] + \
             bumpiness * model_params[P_BUMPINESS_A1] + bumpiness ** 2 * model_params[P_BUMPINESS_A2] + \
-            placement.score_gain * model_params[P_SCORE_CHANGE_A1] + placement.score_gain ** 2 * model_params[P_SCORE_CHANGE_A2]
+            placement.score_gain * model_params[P_SCORE_CHANGE_A1] + placement.score_gain ** 2 * model_params[P_SCORE_CHANGE_A2] + \
+            well * model_params[P_WELL_HEIGHT_A1] + well ** 2 * model_params[P_WELL_HEIGHT_A2]
     return heuristic
 
 # simulate full game with model
@@ -89,18 +95,21 @@ def simulate(src, playback=False):
         return Piece(PieceType(local_rand.randint(0,6)))
     state = State(active_piece = gen_piece(), next_piece = gen_piece())
     score = 0
+    line_clears = 0
     moves = 0
     while state.valid():
         placements: list[Placement] = find_placements(state, gen_piece(), False)
         chosen = chose_placement(placements, heuristic, False)
         score += chosen.score_gain
+        line_clears += chosen.line_clears
         state = chosen.new_state
         if playback:
-            render(chosen.new_state)
+            render(chosen.new_state, score, line_clears)
+            
         moves += 1
     if playback: return
-    print(f"epoch: {epoch_num+1} child: {cid+1}, score: {score}, moves: {moves}")
-    return (score, moves)
+    print(f"epoch: {epoch_num+1} child: {cid+1}, score: {score}, moves: {moves}, line clears: {line_clears}")
+    return (score, moves, line_clears)
 
 # evolutionary training
 def train(source_path: str, epochs: int):
@@ -124,12 +133,13 @@ def train(source_path: str, epochs: int):
             for param_name in P_LIST:
                 c[param_name] = rand.normalvariate(p1[param_name] * 0.5 + p2[param_name] * 0.5, MUT_STD * (abs(p1[param_name] - p2[param_name])))
             return c
-        children = []
-        for i in range(len(group)):
-            for j in range(i+1,len(group)):
-                for k in range(CHILD_COUNT):
-                    children.append(gen_child(group[i], group[j]))
-        print(f"{len(children)} children created")
+        children = [model for model in group]
+        while len(children) < TRAINING_GROUP_SIZE:
+            p1 = rand.randint(0, len(group)-1)
+            p2 = rand.randint(0, len(group)-2)
+            p2 += int(p2 >= p1)
+            children.append(gen_child(group[p1], group[p2]))
+        print(f"{len(children)-len(group)} children created")
 
         # simulate games
         seed = random.randint(0, 10000000000)
@@ -146,9 +156,11 @@ def train(source_path: str, epochs: int):
         print(f"epoch {epoch_num+1} simulation finished")
         
         # keep best children
-        children.sort(key=lambda x : -x[1][1]) # sort by moves
-        print(f"best score: {children[0][1][0]}, average score: {sum(c[1][0] for c in children) / len(children)}")
-        print(f"best moves: {children[0][1][1]}, average moves: {sum(c[1][1] for c in children) / len(children)}")
+        children.sort(key=lambda x : -x[1][2]) # sort by line clears
+        best = children[0][1][2]
+        average_score = sum(c[1][0] for c in children) / len(children)
+        average_moves = sum(c[1][1] for c in children) / len(children)
+        average_line_clears = sum(c[1][2] for c in children) / len(children)
 
         group = [x[0] for x in children[0:min(len(children), GROUP_SIZE)]]
 
@@ -157,6 +169,10 @@ def train(source_path: str, epochs: int):
 
         # playback best
         simulate(gen_src(0, group[0]), True)
+        print(f"best: {best} line clears")
+        print(f"average score: {average_score}")
+        print(f"average moves: {average_moves}")
+        print(f"average line clears: {average_line_clears}")
     
     # cleanup
     sim_pool.close()
