@@ -3,18 +3,24 @@ import heuristic as hp
 from model import *
 import placement_search as ps
 
-N_IN = BOARD_DIM[1] + 6
-N_HIDDEN = 10
+N_IN = 8
+N_HIDDEN1 = 20
+N_HIDDEN2 = 15
+N_HIDDEN3 = 10
+
+P_LIST = [f"w1{r}{c}" for c in range(N_IN) for r in range(N_HIDDEN1)] + [f"w2{r}{c}" for c in range(N_HIDDEN1) for r in range(N_HIDDEN2)] + [f"w3{r}{c}" for c in range(N_HIDDEN2) for r in range(N_HIDDEN3)] + [f"w4{c}" for c in range(N_HIDDEN3)]
 
 class NeuralNetwork:
     def __init__(self, weight_dict):
-        self.weights1 , self.weights2 = self.parseInputs(weight_dict)
+        self.w1 , self.w2, self.w3, self.w4 = self.parseInputs(weight_dict)
     
     def parseInputs(self, dict):
-        w1 = [[dict[f"param{node}{feature}"] for feature in range(N_IN)] for node in range(N_HIDDEN)]
-        w2 = [dict[f"output{node}"] for node in range(N_HIDDEN)]
+        w1 = [[dict[f"w1{r}{c}"] for c in range(N_IN)] for r in range(N_HIDDEN1)]
+        w2 = [[dict[f"w2{r}{c}"] for c in range(N_HIDDEN1)] for r in range(N_HIDDEN2)]
+        w3 = [[dict[f"w3{r}{c}"] for c in range(N_HIDDEN2)] for r in range(N_HIDDEN3)]
+        w4 = [dict[f"w4{c}"] for c in range(N_HIDDEN3)]
 
-        return w1, w2
+        return w1, w2, w3, w4
         
 
     def forward(self, x: np.ndarray) -> np.array:
@@ -30,10 +36,12 @@ class NeuralNetwork:
         bumpiness = float(hp.least_squares(state, 0))
         line_clears = float(placement.line_clears)
         score_gain = float(placement.score_gain)
+        well_covering = float(hp.well_covering(state))
+        num_wells = float(hp.num_wells(heights))
 
-        input_data = np.array(heights + [holes, max_heights, sum_heights, bumpiness, line_clears, score_gain], dtype=np.float32)
+        input_data = np.array([holes, max_heights, sum_heights, bumpiness, line_clears, score_gain, well_covering, num_wells], dtype=np.float32)
 
-        return np.dot(self.weights2, np.dot(self.weights1, input_data))
+        return np.dot(self.w4, np.dot(self.w3, np.dot(self.w2, np.dot(self.w1, input_data))))
 
 
 

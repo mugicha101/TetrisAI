@@ -107,3 +107,26 @@ def least_squares(state: State, target_gradient) -> list[int]:
         target_gradient = 0.4
 
     return sum(ans)
+
+# number of tiles above the top hole (if multiple pick min)
+def well_covering(state: State):
+    for r in range(1, BOARD_DIM[0]):
+        val = BOARD_DIM[0]
+        for c in range(BOARD_DIM[1]):
+            if state.grid[r-1][c] and not state.grid[r][c]:
+                r2 = r-1
+                while r2 >= 0 and state.grid[r2][c]:
+                    r2 -= 1
+                val = min(val, r-r2)
+        if val != BOARD_DIM[0]:
+            return val * 10
+    return 0
+
+# number of columns with neighbors > 2 greater
+def num_wells(heights: list[int]):
+    wells = 0
+    wells += 1 if heights[1] - heights[0] > 2 else 0
+    wells += 1 if heights[BOARD_DIM[1]-2] - heights[BOARD_DIM[1]-1] > 2 else 0
+    for c in range(1, BOARD_DIM[1]-1):
+        wells += 1 if min(heights[c-1], heights[c+1]) - heights[c] > 2 else 0
+    return wells * 10
