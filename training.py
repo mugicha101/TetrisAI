@@ -170,6 +170,13 @@ def train(source_path: str, data_path: str, epochs: int):
 
         group = [x[0] for x in children[0:min(len(children), GROUP_SIZE)]]
 
+        # normalize group
+        param_avg = sum(sum(abs(x[param]) for param in P_LIST) for x in group) / (len(P_LIST) * len(group))
+        pdiv = 1 / param_avg
+        for x in group:
+            for param in P_LIST:
+                x[param] *= pdiv
+
         # store results
         store_group(source_path, group)
         write_data(data_path, average_score, average_moves, average_line_clears)
