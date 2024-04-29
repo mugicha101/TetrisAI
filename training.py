@@ -9,10 +9,11 @@ import random
 import os
 
 GROUP_SIZE = 100 # size of remaining group per epoch
-TRAINING_GROUP_SIZE = 150 # size of training group per epoch (crossbreed until this size reached)
+TRAINING_GROUP_SIZE = 200 # size of training group per epoch (crossbreed until this size reached)
 RAND_PARENTS = 2 # number of completely random parents to add at start of each epoch
 MUT_STD = 1 # standard deviation to mutate each param by when crossbreeding = MUT_STD * (diff between this param in parent)
 NUM_CORES = 8 # number of cores to use
+GEO_BASE = 0.98
 
 # TODO: GET PROCESS RETURN VALUE
 
@@ -32,6 +33,10 @@ def store_group(gene_file_path: str, group: list[dict[str,float]]) -> None:
     data = ";".join([",".join([f"{label}={value}" for label, value in model_params.items()]) for model_params in group])
     with open(gene_file_path, 'w') as gene_file:
         gene_file.write(data)
+
+def write_data(data_path: str, avg_score: int, avg_moves: int, avg_line_clears: int):
+    with open(data_path, 'a') as data_file:
+        data_file.write(f"{avg_score}\t{avg_moves}\t{avg_line_clears}\n")
 
 P_LINE_CLEAR_A1 = "line_clear_a1"
 P_LINE_CLEAR_A2 = "line_clear_a2"
@@ -112,7 +117,7 @@ def simulate(src, playback=False):
     return (score, moves, line_clears)
 
 # evolutionary training
-def train(source_path: str, epochs: int):
+def train(source_path: str, data_path: str, epochs: int):
     # check if existing weight values exist and load if possible
     group: list[dict[str,float]] = []
     if os.path.isfile(source_path):
@@ -134,11 +139,12 @@ def train(source_path: str, epochs: int):
                 c[param_name] = rand.normalvariate(p1[param_name] * 0.5 + p2[param_name] * 0.5, MUT_STD * (abs(p1[param_name] - p2[param_name])))
             return c
         children = [model for model in group]
+        weights = [pow(GEO_BASE, i) for i in range(len(group))]
+        indices = [i for i in range(len(group))]
         while len(children) < TRAINING_GROUP_SIZE:
-            p1 = rand.randint(0, len(group)-1)
-            p2 = rand.randint(0, len(group)-2)
-            p2 += int(p2 >= p1)
-            children.append(gen_child(group[p1], group[p2]))
+            p = rand.choices(indices, weights=weights, k=2)
+            if p[0] == p[1]: continue
+            children.append(gen_child(group[p[0]], group[p[1]]))
         print(f"{len(children)-len(group)} children created")
 
         # simulate games
@@ -166,6 +172,7 @@ def train(source_path: str, epochs: int):
 
         # store results
         store_group(source_path, group)
+        write_data(data_path, average_score, average_moves, average_line_clears)
 
         # playback best
         simulate(gen_src(0, group[0]), True)
@@ -178,7 +185,7 @@ def train(source_path: str, epochs: int):
     sim_pool.close()
 
 def main():
-    train("training_cache.txt", 1000)
+    train("training_cache.txt", "training_data.txt", 1000)
 
 if __name__ == "__main__":
     render_controls.enabled = True
