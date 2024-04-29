@@ -56,7 +56,7 @@ def heuristic_placement(heuristic: Callable[[Placement],float], weighted_choice:
 
 def main():
     # load best model
-    heuristic = gen_score_heuristic(load_group("training_cache.txt")[0])
+    heuristic = gen_nn_heuristic(load_group("training_cache.txt")[0])
     render_controls.frame_time = 0.01
     end_state = heuristic_placement(heuristic, False, True)
 

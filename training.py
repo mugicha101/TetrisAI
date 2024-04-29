@@ -1,5 +1,6 @@
 from model import *
 from view import *
+from neuralnetwork import *
 from placement_search import Placement
 from placement_search import find_placements
 from heuristic import *
@@ -14,8 +15,6 @@ RAND_PARENTS = 2 # number of completely random parents to add at start of each e
 MUT_STD = 1 # standard deviation to mutate each param by when crossbreeding = MUT_STD * (diff between this param in parent)
 NUM_CORES = 8 # number of cores to use
 GEO_BASE = 0.98
-
-# TODO: GET PROCESS RETURN VALUE
 
 def load_group(gene_file_path: str) -> list[dict[str,float]]:
     group: list[dict[str,float]] = []
@@ -51,7 +50,8 @@ P_BUMPINESS_A2 = "bumpiness_a2"
 P_TARGET_SLOPE = "target_slope"
 P_WELL_HEIGHT_A1 = "well_height_a1"
 P_WELL_HEIGHT_A2 = "well_height_a2"
-P_LIST = [P_LINE_CLEAR_A1, P_LINE_CLEAR_A2, P_COL_SUM_A1, P_COL_SUM_A2, P_MAX_COL_A1, P_MAX_COL_A2, P_SCORE_CHANGE_A1, P_SCORE_CHANGE_A2, P_BUMPINESS_A1, P_BUMPINESS_A2, P_TARGET_SLOPE, P_WELL_HEIGHT_A1, P_WELL_HEIGHT_A2]
+# P_LIST = [P_LINE_CLEAR_A1, P_LINE_CLEAR_A2, P_COL_SUM_A1, P_COL_SUM_A2, P_MAX_COL_A1, P_MAX_COL_A2, P_SCORE_CHANGE_A1, P_SCORE_CHANGE_A2, P_BUMPINESS_A1, P_BUMPINESS_A2, P_TARGET_SLOPE, P_WELL_HEIGHT_A1, P_WELL_HEIGHT_A2]
+P_LIST = [f"param{node}{feature}" for feature in range(N_IN) for node in range(N_HIDDEN)] + [f"output{node}" for node in range(N_HIDDEN)]
 
 rand = random.Random()
 
@@ -72,6 +72,12 @@ def rand_model() -> dict[str,float]:
     model_params[P_TARGET_SLOPE] = rand.uniform(-0.5, 0.5)
     return model_params
 
+def rand_nn_model() -> dict[str,float]:
+    model_params: dict[str,float] = {}
+    for param in P_LIST: 
+        model_params[param] = rand.uniform(-1, 1)
+    return model_params
+
 def gen_score_heuristic(model_params: dict[str,float]) -> Callable[[Placement],float]:
     def heuristic(placement: Placement) -> float:
         s = placement.new_state
@@ -90,10 +96,16 @@ def gen_score_heuristic(model_params: dict[str,float]) -> Callable[[Placement],f
             well * model_params[P_WELL_HEIGHT_A1] + well ** 2 * model_params[P_WELL_HEIGHT_A2]
     return heuristic
 
+def gen_nn_heuristic(model_params: dict[str,float]) -> Callable[[Placement],float]:
+    nn: NeuralNetwork = NeuralNetwork(model_params)
+    def heuristic(placement: Placement) -> float:
+        return nn.evaluate(placement)
+    return heuristic
+
 # simulate full game with model
 def simulate(src, playback=False):
     model_params, rand_seed, epoch_num, cid = src
-    heuristic = gen_score_heuristic(model_params)
+    heuristic = gen_nn_heuristic(model_params)
     local_rand = random.Random()
     local_rand.seed(rand_seed)
     def gen_piece() -> Piece:
@@ -129,7 +141,7 @@ def train(source_path: str, data_path: str, epochs: int):
         # add random parents
         num_rand_parents = max(GROUP_SIZE + RAND_PARENTS - len(group), 0)
         for _ in range(num_rand_parents):
-            group.append(rand_model())
+            group.append(rand_nn_model())
         print(f"added {num_rand_parents} random parents")
 
         # generate children
