@@ -4,18 +4,22 @@ from typing import Callable
 from collections import deque
 import random
 
-# MCTS next placement agent
+# chooses best placement based on placement rating heuristic
 # if weighted, does a weighted sample based on score, else chooses placement with highest score
 # score of a placement based on heuristic
-def chose_placement(placements: list[Placement], heuristic: Callable[[Placement],float], weighted: bool = True) -> Placement:
+def chose_placement(placements: list[Placement], heuristic: Callable[[Placement],float], weighted: bool = False, return_rating: bool = False) -> Placement:
     weights = [heuristic(placement) for placement in placements]
+    idx = 0
     if not weighted:
-        return placements[weights.index(max(weights))]
-    offset = min(weights)
-    weights = [w - offset for w in weights]
-    mult = 1.0 / sum(weights)
-    weights = [w * mult for w in weights]
-    return random.choices(placements, weights=weights, k=1)[0]
+        idx = weights.index(max(weights))
+    else:
+        offset = min(weights)
+        weights = [w - offset for w in weights]
+        mult = 1.0 / sum(weights)
+        weights = [w * mult for w in weights]
+        idx = random.choices([i for i in range(len(placements))], weights=weights, k=1)[0]
+        weights = [w + offset for w in weights]
+    return (placements[idx], weights[idx]) if return_rating else placements[idx]
 
 def test_heuristic(placement: Placement) -> float:
     col_heights = column_heights(placement.new_state)
